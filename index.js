@@ -1,46 +1,48 @@
 import express from "express";
-import multer from "multer";
 import cors from "cors";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const app = express();
 
+// CORS
 app.use(cors());
 
-// ნებისმიერს დავუშვებთ, მერე პირველ ფაილს ავიღებთ
-const upload = multer();
+// მოვითხოვოთ raw body ყველა audio-content-სთვის
+app.use(
+  express.raw({
+    type: "audio/*",
+    limit: "20mb", // როგორც გინდა, შეგიძლია გაზარდო/შემცირო
+  })
+);
 
 // Health check
 app.get("/", (req, res) => {
   res.send("Georgian Speech API is running ✅");
 });
 
-app.post("/transcribe", upload.any(), async (req, res) => {
+app.post("/transcribe", async (req, res) => {
   try {
-    // ვნახოთ საერთოდ მოვიდა თუ არა ფაილი
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No audio file received" });
-    }
+    // შევამოწმოთ, რომ ფაილი ნამდვილად მოვიდა
+    const audioBuffer = req.body;
 
-    // ავიღოთ პირველი ფაილი (არ აქვს მნიშვნელობა field-ის სახელს)
-    const audioFile = req.files[0];
-    const audioBuffer = audioFile.buffer;
+    if (!audioBuffer || !audioBuffer.length) {
+      return res.status(400).json({ error: "No audio data received" });
+    }
 
     const result = await openai.audio.transcriptions.create({
       model: "whisper-1",
-      file: audioBuffer,   // Buffer-ს პირდაპირ ვაწვდით
+      file: audioBuffer,   // პირდაპირ Buffer-ს ვაწვდით
       language: "ka",
-      response_format: "json"
+      response_format: "json",
     });
 
     res.json({ text: result.text });
   } catch (err) {
     console.error("TRANSCRIBE ERROR:", err);
-    res.status(500).json({
-      error: "Transcription failed",
-      details: err.toString()
-    });
+    res
+      .status(500)
+      .json({ error: "Transcription failed", details: err.toString() });
   }
 });
 
