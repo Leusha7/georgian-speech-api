@@ -1,34 +1,29 @@
 import express from "express";
-import cors from "cors";
 import multer from "multer";
-import fs from "fs";
-import whisper from "whisper-node";
+import cors from "cors";
+import OpenAI from "openai";
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const app = express();
+
 app.use(cors());
-const upload = multer({ dest: "/tmp" });
+const upload = multer();
 
-app.post("/speech", upload.single("audio"), async (req, res) => {
+app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
-    if (!req.file) return res.json({ error: "No audio file" });
+    const audioFile = req.file;
 
-    const result = await whisper(req.file.path, {
-      model: "base",
-      language: "ka" // ქართული
+    const result = await openai.audio.transcriptions.create({
+      model: "gpt-4o-mini-tts",
+      file: new File([audioFile.buffer], "audio.m4a"),
+      language: "ka"
     });
-
-    fs.unlinkSync(req.file.path);
 
     res.json({ text: result.text });
   } catch (err) {
-    res.json({ error: err.toString() });
+    console.error(err);
+    res.status(500).json({ error: "Transcription failed" });
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Georgian Speech API is running");
-});
-
-const port = process.env.PORT || 10000;
-app.listen(port, () => console.log("Server running on port", port));
-
+app.listen(10000, () => console.log("Running on port 10000"));
