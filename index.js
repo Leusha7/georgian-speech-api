@@ -9,13 +9,16 @@ const app = express();
 app.use(cors());
 const upload = multer();
 
-// Health check
 app.get("/", (req, res) => {
   res.send("Georgian Speech API is running ✅");
 });
 
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file received" });
+    }
+
     const audioBuffer = req.file.buffer;
 
     const result = await openai.audio.transcriptions.create({
@@ -24,13 +27,15 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
         data: audioBuffer,
         name: "audio.m4a"
       },
-      language: "ka"
+      language: "ka",
+      response_format: "json"
     });
 
     res.json({ text: result.text });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Transcription failed", details: err });
+    console.error("TRANSCRIBE ERROR:", err);
+    res.status(500).json({ error: "Transcription failed", details: err.toString() });
   }
 });
 
