@@ -24,8 +24,7 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
     const result = await openai.audio.transcriptions.create({
       model: "whisper-1",
       file: {
-        data: audioBuffer,
-        name: "audio.m4a"
+        data: audioBuffer
       },
       language: "ka",
       response_format: "json"
@@ -43,3 +42,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
