@@ -9,21 +9,32 @@ const app = express();
 app.use(cors());
 const upload = multer();
 
+// Health check
+app.get("/", (req, res) => {
+  res.send("Georgian Speech API is running ✅");
+});
+
 app.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
-    const audioFile = req.file;
+    const audioBuffer = req.file.buffer;
 
     const result = await openai.audio.transcriptions.create({
-      model: "gpt-4o-mini-tts",
-      file: new File([audioFile.buffer], "audio.m4a"),
+      model: "whisper-1",
+      file: {
+        data: audioBuffer,
+        name: "audio.m4a"
+      },
       language: "ka"
     });
 
     res.json({ text: result.text });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Transcription failed" });
+    res.status(500).json({ error: "Transcription failed", details: err });
   }
 });
 
-app.listen(10000, () => console.log("Running on port 10000"));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
